@@ -1,0 +1,31 @@
+{
+  "name": "dsh-code-discipline",
+  "description": "DSHA plugin: write-code discipline that puts official documentation, reuse, and verifiable minimal change ahead of improvisation",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib/index.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "cordis": {
+    "entry": "lib/index.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2"
+  },
+  "license": "MIT"
+}
