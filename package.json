@@ -1,8 +1,11 @@
 {
   "name": "dsh-code-discipline",
   "description": "DSHA plugin: write-code discipline that puts official documentation, reuse, and verifiable minimal change ahead of improvisation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -25,7 +28,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-system-prompt": ">=0.2.1-rc.2 <0.3.0"
   },
   "license": "MIT"
 }
