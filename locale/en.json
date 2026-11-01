@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Code Discipline",
-    "description": "Puts official documentation, existing implementations, and verifiable minimal change ahead of improvisation whenever the agent writes code."
+    "description": "Reads project docs and looks for ready-made wheels before touching code, then picks the smallest verifiable change."
   }
 }

@@ -1,6 +1,6 @@
 # 写码纪律 · dsh-code-discipline
 
-一个 DeepSeek Harness（DSH）host-only 插件：把“先查一手文档、先找现有实现，再动手写”变成每一轮都在场的系统提示词约束。
+一个 DeepSeek Harness（DSH）host-only 插件：把“先读项目文档、先找现成轮子，再动手写”变成每一次动手写码前都在场的系统提示词约束。
 
 ## 它做什么
 
@@ -9,22 +9,22 @@
 - 名称：`dsh:code-discipline`
 - 顺序：`order: 120`
 - 插值：`interpolate: false`
-- 文本：不随部署路径或会话变化
+- 文本：不随部署路径、预设或会话变化
 
-段落要求模型在新增或修改会被执行/装载的文件（`.ts` `.js` `.py` `.sh`、`cordis.patch.yml`、插件 `package.json`、profile 配置），或安装插件、修改组合时，先完成四步：
+段落要求模型在新增或修改会被执行/装载的文件（`.ts` `.js` `.py` `.sh`、`cordis.patch.yml`、插件 `package.json`、profile 配置），或安装插件、修改组合时，动手前先走一趟证据；同一任务只在第一次写码前走一次，纯文档与问答不触发：
 
-1. **定归属**：判断代码属于 DSH 插件/组合、第三方库，还是本仓库自有实现。
-2. **查一手文档**：查到能写出具体 API 名与签名；DSH 包先取 `packageDir` 再读 README 与类型声明，第三方库读官方 API 页，本仓库先读项目文档（从当前目录向上到仓库根的 `AGENTS.md`/`CLAUDE.md`，存在才读、最近一级优先，再读 README 相关章节），然后看相邻实现。
-3. **查本地**：动手前用 `grep`/`glob` 找同类实现，能改现成的就不另建。
-4. **交差**：新造时说明“为什么现有实现不能改”，改完说明验证了什么。
+1. **读文档**：从当前目录向上到仓库根读 `AGENTS.md` / `CLAUDE.md`（存在才读，最近一级优先），再读 `README` 的相关章节。
+2. **找轮子**：`grep`/`glob` 一次本仓库有无现成实现；再 `search` 一次外部有无成熟包，命中就 `fetch` 读它的官方说明。
+3. **复用或说明**：本仓库有就直接改，外部有就装上用，都没有才新造，并用一句话说明为何不用。
+4. **不靠猜**：文档或搜索结果拿不准时换来源或先问。
 
-方案取三者同时成立的那个：官方文档明确支持、能复用现有代码、改动最小且可验证。
+末句写明优先级依据：取「有文档支持、可复用现有实现或现成轮子、改动最小且可验证」同时成立的那个；与所在预设给的轮数预算冲突时，这一趟只取一条最小证据就动手。
 
 ## 边界
 
 - 只约束会被执行或装载的代码与插件安装动作；纯文档、问答不触发。
 - 不拦截 `write`/`edit` 工具，也不要求模型额外调用某个查询工具。纪律段本身就是唯一载体。
-- 不在提示词里写死任何部署路径；查找 DSH 包一律走运行时的 `Config.listConfigs` 方法。
+- 不写死部署路径、工具名或技能名：读文档用文件工具，找轮子用本仓库检索加网页搜索，这些能力由当前预设提供，哪个预设缺哪一个都不该让纪律段指向不存在的工具。
 
 设计取舍见 [ADR 0001：写码纪律以系统提示词段落注入，而非工具策略拦截](docs/adr/0001-code-discipline-system-prompt-section.md)；兼容范围的起点与理由见 [ADR 0002](docs/adr/0002-plugin-compatibility-engines-dsh.md)。
 
@@ -66,11 +66,18 @@ dsh plugin --profile <profile> add <package@version>
 
 安装与 profile 启动都会校验这个范围。不匹配时拒绝记录里的 `requirements` 字段会指出卡住的 `engines.dsh` 或 peer 包（旧版 DSH 里叫 `peers`）。
 
+本机 DSH `0.2.1-rc.4` 下，本插件的补丁与任意预设补丁可用 `--patch` 叠加合成。插件只声明 DSH 版本范围，不对任何具体预设作出承诺：纪律段只用读文件、本仓库检索、网页搜索与抓取这类通用能力，不点名任何工具或技能，因此装进哪个预设都不该指向不存在的能力。换成某个预设时，用 `--patch` 把两者的补丁叠起来跑一次 `--dump-config` 即可确认合成通过，不受 profile 是否已登记本插件影响：
+
+```bash
+pnpm check -- --preset <预设补丁>.patch.yml
+```
+
 ## 仓库结构
 
 ```text
 .
 ├── lib/index.js                  # 插件实现：注册系统提示词段落
+├── scripts/check-preset-parity.mjs  # 验收：文本不含预设专属能力，合成树可通过
 ├── locale/{zh,en}.json           # 插件市场显示文案
 ├── icon.svg                      # 插件图标
 ├── cordis.patch.yml              # 组合补丁
@@ -81,11 +88,17 @@ dsh plugin --profile <profile> add <package@version>
 
 ## 开发
 
-要求 Node.js ESM 环境。无构建步骤，改完直接做语法检查：
+要求 Node.js ESM 环境。无构建步骤，改完直接做语法检查与验收：
 
 ```bash
 node --check lib/index.js
-node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+pnpm check
+```
+
+`pnpm check` 断言四件事：段落名与 `order` 未变；纪律段文本不含 `cordis_inspect_query`、`cordis-plugin-development`、`Config.listConfigs` 这类只在某个预设里成立的能力；给了 `--preset <补丁路径>` 时，该补丁能与本插件合成并通过 `--dump-config`；合成树里同时有 `dsh-tool-web` 与 `dsh-tool-fs-search`。要验证某个具体预设：
+
+```bash
+pnpm check -- --preset <预设补丁>.patch.yml
 ```
 
 运行时依赖由 DSH 提供：
